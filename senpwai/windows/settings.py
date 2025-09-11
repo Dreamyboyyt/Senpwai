@@ -760,5 +760,5 @@ class IgnoreFiltersSetting(YesOrNoSetting):
             "Ignore fillers",
             SETTINGS.ignore_fillers,
             SETTINGS.update_ignore_fillers,
-            "Occasionally ignores canon episodes for anime with mutliple seasons",
+            "Automatically ignore filler episodes while downloading",
         )
