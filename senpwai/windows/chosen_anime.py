@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 from senpwai.common.classes import SETTINGS, Anime, AnimeDetails
-from senpwai.common.scraper import AiringStatus, lacked_episode_numbers
+from senpwai.common.scraper import AiringStatus
 from senpwai.common.static import (
     CHOSEN_ANIME_WINDOW_BCKG_IMAGE_PATH,
     DUB,
@@ -62,25 +62,27 @@ class SummaryLabel(StyledLabel):
 class HavedEpisodes(StyledLabel):
     def __init__(
         self,
+    ):
+        super().__init__(font_size=18)
+
+    def update_text(
+        self,
         start: int | None,
         end: int | None,
         haved_count: int | None,
         total_episode_count: int,
-    ):
-        super().__init__(font_size=18)
-        self.start = start
-        self.end = end
-        self.count = haved_count
+    ) -> None:
         if not haved_count:
-            self.setText("You have no episodes of this anime.")
+            self.setText("You have no episodes of this anime")
         elif haved_count >= total_episode_count:
-            self.setText("You have all the current episodes of this anime, weeeeb.")
+            self.setText("You have all the current episodes of this anime, weeeeb")
         else:
             self.setText(
-                f"You have {haved_count} episodes from {start} to {end}."
+                f"You have {haved_count} episodes from {start} to {end}"
             ) if haved_count != 1 else self.setText(
-                f"You have {haved_count} episode from {start} to {end}."
+                f"You have {haved_count} episode from {start} to {end}"
             )
+        set_minimum_size_policy(self)
 
 
 class MakeAnimeDetailsThread(QThread):
@@ -195,7 +197,7 @@ class ChosenAnimeWindow(AbstractTemporaryWindow):
             first_row_of_buttons_layout.addWidget(button)
             quality = button.quality
             button.clicked.connect(
-                lambda garbage_bool, quality=quality: self.update_quality(quality)
+                lambda _, quality=quality: self.update_quality(quality)
             )
             if quality == SETTINGS.quality:
                 button.set_picked_status(True)
@@ -204,11 +206,9 @@ class ChosenAnimeWindow(AbstractTemporaryWindow):
             self.norm_button = GogoNormOrHlsButton(self, "norm", 18)
             self.hls_button = GogoNormOrHlsButton(self, "hls", 18)
             self.norm_button.clicked.connect(
-                lambda garbage_bool: self.update_is_hls_download(False)
+                lambda _: self.update_is_hls_download(False)
             )
-            self.hls_button.clicked.connect(
-                lambda garbage_bool: self.update_is_hls_download(True)
-            )
+            self.hls_button.clicked.connect(lambda _: self.update_is_hls_download(True))
             set_minimum_size_policy(self.norm_button)
             set_minimum_size_policy(self.hls_button)
             if anime_details.is_hls_download:
@@ -225,20 +225,23 @@ class ChosenAnimeWindow(AbstractTemporaryWindow):
         second_row_of_buttons_widget = QWidget()
         second_row_of_buttons_layout = QHBoxLayout()
 
-        start_episode = (
-            str((self.anime_details.haved_end) + 1)
-            if (
-                self.anime_details.haved_end
-                and self.anime_details.haved_end < self.anime_details.episode_count
+        def get_start_episode() -> str:
+            start_episode = (
+                str((self.anime_details.haved_end) + 1)
+                if (
+                    self.anime_details.haved_end
+                    and self.anime_details.haved_end < self.anime_details.episode_count
+                )
+                else "1"
             )
-            else "1"
-        )
+            return start_episode
+
         input_size = QSize(80, 40)
         if anime_details.metadata.airing_status != AiringStatus.UPCOMING:
             self.start_episode_input = NumberInput(21)
             self.start_episode_input.setFixedSize(input_size)
             self.start_episode_input.setPlaceholderText("START")
-            self.start_episode_input.setText(str(start_episode))
+            self.start_episode_input.setText(get_start_episode())
             self.end_episode_input = NumberInput(21)
             self.end_episode_input.setPlaceholderText("STOP")
             self.end_episode_input.setFixedSize(input_size)
@@ -264,13 +267,13 @@ class ChosenAnimeWindow(AbstractTemporaryWindow):
         third_row_of_labels_widget = QWidget()
         third_row_of_labels_layout = QHBoxLayout()
 
-        haved_episodes = HavedEpisodes(
+        haved_episodes = HavedEpisodes()
+        haved_episodes.update_text(
             self.anime_details.haved_start,
             self.anime_details.haved_end,
             self.anime_details.haved_count,
             self.anime_details.episode_count,
         )
-        set_minimum_size_policy(haved_episodes)
         third_row_of_labels_layout.addWidget(haved_episodes)
 
         def set_custom_anime_folder(folder: str) -> None:
@@ -285,6 +288,13 @@ class ChosenAnimeWindow(AbstractTemporaryWindow):
             SETTINGS.add_custom_anime_folder(
                 self.anime_details.anime.title, self.anime_details.anime_folder_path
             )
+            haved_episodes.update_text(
+                self.anime_details.haved_start,
+                self.anime_details.haved_end,
+                self.anime_details.haved_count,
+                self.anime_details.episode_count,
+            )
+            self.start_episode_input.setText(get_start_episode())
 
         folder_button = FolderPickerButton(
             100,
@@ -454,13 +464,16 @@ class DownloadButton(StyledButton):
             invalid_input = True
 
         if not invalid_input:
-            self.anime_details.lacked_episode_numbers = lacked_episode_numbers(
-                start_episode, end_episode, self.anime_details.haved_episodes
-            )
-            if len(self.anime_details.lacked_episode_numbers) == 0:
-                error(
-                    "Bakayorou, you already have all episodes within the provided range!!!"
-                )
+            self.anime_details.set_lacked_episodes(start_episode, end_episode)
+            if not self.anime_details.lacked_episodes:
+                if self.anime_details.filler_episodes:
+                    error(
+                        "Bakayorou, you already have all the canon episodes within the provided range!!!"
+                    )
+                else:
+                    error(
+                        "Bakayorou, you already have all episodes within the provided range!!!"
+                    )
                 invalid_input = True
 
         if invalid_input:
