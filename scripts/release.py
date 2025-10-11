@@ -117,6 +117,9 @@ def main() -> None:
         "-sr", "--skip_ruff", action="store_true", help="Skip running ruff"
     )
     parser.add_argument(
+        "-st", "--skip_tests", action="store_true", help="Skip running tests"
+    )
+    parser.add_argument(
         "-sbr",
         "--skip_build_release",
         action="store_true",
@@ -174,9 +177,12 @@ def main() -> None:
         bump_version.main(True)
     if not parsed.skip_ruff:
         ruff.main(True, True)
+    if not parsed.skip_tests:
+        log_info("Running tests")
+        subprocess.run("poe test_ddl").check_returncode()
     if not parsed.skip_build_release:
         log_info("Building release")
-        subprocess.run("poe build_release_ddl").check_returncode()
+        subprocess.run("poe build_release").check_returncode()
     release_notes = get_release_notes(parsed.from_commits, parsed.previous_version)
     if not parsed.skip_merge_branch:
         log_info(f"Merging branch {BRANCH_NAME}")
