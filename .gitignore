@@ -1,4 +1,5 @@
 .dev-garbage/
+.test-downloads/
 .setup-scripts/
 .venv/
 .venv-termux
@@ -13,9 +14,11 @@ dist/
 .scraps/
 .credentials/
 .vscode/*
+senpwai/scrapers/tokyo/
 !.vscode/extensions.json
 
 crap.py
 NOTE
 scripts/changelog.md
 .env
+tokyo.html
